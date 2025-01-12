@@ -307,7 +307,7 @@ local function getJwksData(url, host)
     local file = io.open("/tmp/jwks.json")
 
     if exit_code ~= 0 then
-        log_alert("Failed to execute curl: " .. exit_code)
+        log_alert("Failed to execute curl: " .. tostring(exit_code))
         file:close()
         return {keys = config.publicKeys.keys, expiresIn = 1} -- Fallback
     end
