@@ -302,10 +302,9 @@ local function getJwksData(url, host)
     local publicKeys = {}
     local expiresIn = 60 * 60 -- 1 hour default
 
-    local cmd = string.format('curl -s -H "Host: %s" "%s"', host, url) -- Construct the curl command
-    local file = io.tmpfile()
-    cmd = cmd .. " > " .. file:filename()
+    local cmd = string.format('curl -s -H "Host: %s" "%s" > /tmp/jwks.json', host, url) -- Construct the curl command
     local exit_code = os.execute(cmd)
+    local file = io.open("/tmp/jwks.json")
 
     if exit_code ~= 0 then
         log_alert("Failed to execute curl: " .. exit_code)
