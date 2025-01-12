@@ -303,8 +303,8 @@ local function getJwksData(url, host)
     local expiresIn = 60 * 60 -- 1 hour default
 
     local cmd = string.format('curl -H "Host: %s" "%s" > /tmp/jwks.json', host, url) -- Construct the curl command
-    local os_execute_response = os.execute('curl "' .. url .. '" > /tmp/jwks.json')
-    local file = io.open("/tmp/jwks.json")
+    local os_execute_response = os.execute('curl "' .. url .. '" -H "Accept: application/json" > /tmp/jwks.json')
+    local file = io.open("/tmp/jwks.json", "r")
     log_info("os.execute response: " .. tostring(os_execute_response))
     if not file then
         log_alert("No file found at /tmp/jwks.json")
