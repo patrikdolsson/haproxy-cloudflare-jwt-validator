@@ -183,12 +183,12 @@ local function getJwksData(url)
     local ip_url = string.gsub(url, '|'..be..'|', addr)
     local domain_url = string.gsub(url, '|'..be..'|', server_name)
 
-    -- log_info('Retrieving JWKS Public Key Data from: ' .. ip_url)
+    log_info('Retrieving JWKS Public Key Data from: ' .. ip_url)
     log_info('Retrieving JWKS Public Key Data from: ' .. domain_url)
 
     -- local response, err = http.get{url=ip_url, headers={Host=server_name}}
     local httpclient = core.httpclient()
-    local response, err = httpclient:get{url=domain_url}
+    local response, err = httpclient:get{url=ip_url, headers={Host=server_name}}
     -- local response, err = http.get{url=domain_url}
 
     if not response then
