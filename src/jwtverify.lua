@@ -146,113 +146,205 @@ local function audienceIsValid(token, expectedAudience)
     return has_value(token.payloaddecoded.aud, expectedAudience)
 end
 
+local function execute_shell_command(command)
+    local exit_code = os.execute(command)
+    if exit_code == 0 then
+        core.log(core.LOG_INFO, "Command executed successfully: " .. command)
+        return true
+    else
+        core.log(core.LOG_ALERT, "Command failed: " .. command .. " (Exit code: " .. exit_code .. ")")
+        return false
+    end
+end
+
+
+
 -- This function loads the JSON from our JWKS url. However because we cannot do DNS lookups in haproxy, We have to
 -- use the IP address directly. We depend on a backend that's set in order for Haproxy to resolve an IP address
 -- for the JWKS url.
 -- If there are any errors (ex: if cloudflare endpoint is down... then we will rely on the last-used public key
-local function getJwksData(url)
-    --check for existence of public keys
+-- local function getJwksData(url)
+--     --check for existence of public keys
 
+--     local publicKeys = {}
+--     local expiresIn = 60 * 60 -- 1 hour default
+
+--     local be = string.gsub(string.match(url, '|.*|'), '|', '')
+--     local addr
+--     local server_name
+--     for name, server in pairs(core.backends[be].servers) do
+--         local status = server:get_stats()['status']
+--         if status == "no check" or status:find("UP") == 1 then
+--             addr = server:get_addr()
+--             server_name = name
+--             log_info("addr: '" .. addr .. "'")
+--             log_info("server_name: '" .. server_name .. "'")
+--             break
+--         end
+--     end
+--     log_info("final addr: '" .. tostring(addr) .. "'")
+--     log_info("final server_name: '" .. tostring(server_name) .. "'")
+
+--     if addr == nil or addr == '<unknown>' then
+--         log_info("No servers available for auth-request backend: '" .. be .. "'")
+--         return {
+--             keys = config.publicKeys.keys,
+--             expiresIn = 1 -- 1 second
+--         }
+--     end
+
+--     local ip_url = string.gsub(url, '|'..be..'|', addr)
+--     local domain_url = string.gsub(url, '|'..be..'|', server_name)
+
+--     log_info('Retrieving JWKS Public Key Data from: ' .. domain_url)
+--     -- Example: Fetch JWKS using curl (as in the previous example)
+--     local success = execute_shell_command("curl -H \"Host: " .. server_name .. "\" \"" .. domain_url .. "\" > /tmp/jwks.json")
+
+--     local jwks, err
+--     if success then
+--         local file = io.open("/tmp/jwks.json", "r")
+--         if not file then
+--             log_info("Failed to open JWKS file")
+--             return nil
+--         end
+
+--         local content = file:read("*a")
+--         file:close()
+--         jwks, err = json.decode(content)
+--         if not jwks then
+--             log_alert("Failed to parse JWKS JSON: " .. err)
+--             return nil
+--         end
+
+--         if is_cached then
+--             return {
+--                 keys = config.publicKeys.keys,
+--                 expiresIn = 60 -- 60 second
+--             }
+--         end
+--     end
+
+--     -- local http_headers = {Host = server_name}
+
+--     -- if config.jwks_proxy then
+--     --     ip_url = config.jwks_proxy
+--     --     http_headers = nil
+--     -- end
+
+--     -- log_info('Retrieving JWKS Public Key Data from: ' .. ip_url)
+--     -- log_info('Retrieving JWKS Public Key Data from: ' .. domain_url)
+
+--     -- local response, err = http.get{url=ip_url} --, headers={Host = server_name}}
+--     -- local httpclient = core.httpclient()
+--     -- local response, err = httpclient:get{url=ip_url, headers={Host=server_name}}
+--     -- local response, err = http.get{url=domain_url}
+
+--     -- if not response then
+--     --     log_alert(err)
+--     --     return {
+--     --         keys = config.publicKeys.keys,
+--     --         expiresIn = 1 -- 1 second
+--     --     }
+--     -- end
+--     -- for key, value in pairs(response) do
+--     --     log_info(tostring(key) .. ": " .. tostring(value))
+--     -- end
+
+--     -- if response.status_code ~= 200 then
+--     --     log_info("JWKS data is not available.")
+--     --     log_info("status_code: " .. response.status_code or "<none>")
+--     --     log_info("body: " .. dump(response.content) or "<none>")
+--     --     log_info("headers: " .. dump(response.headers) or "<none>")
+--     --     log_info("reason: " .. response.reason or "<none>")
+
+--     --     -- return already set publicKeys if already set
+--         -- if is_cached then
+--         --     return {
+--         --         keys = config.publicKeys.keys,
+--         --         expiresIn = 60 -- 60 second
+--         --     }
+--         -- end
+
+--     --     log_alert("JWKS data is not available")
+--     -- end
+
+--     -- local JWKS_response = json.decode(response.content)
+--     local JWKS_response = jwks
+
+--     for _,v in pairs(JWKS_response.public_certs) do
+--         table.insert(publicKeys,openssl.x509.new(v.cert):getPublicKey())
+--         log_info("Public Key Cached: " .. v.kid)
+--     end
+
+--     local max_age
+
+--     if response.headers['cache-control'] then
+--         local has_max_age = string.match(response.headers['cache-control'], "max%-age=%d+")
+--         if has_max_age then
+--             max_age = tonumber(string.gsub(has_max_age, 'max%-age=', ''), 10)
+--         end
+--     end
+
+--     if max_age then
+--         expiresIn = math.min(max_age, config.max_cache)
+--     else
+--         log_info('cache-control headers not able to be retrieved from JWKS endpoint')
+--     end
+
+--     return {
+--         keys = publicKeys,
+--         expiresIn = expiresIn
+--     }
+
+-- end
+
+local function getJwksData(url, host)
     local publicKeys = {}
     local expiresIn = 60 * 60 -- 1 hour default
 
-    local be = string.gsub(string.match(url, '|.*|'), '|', '')
-    local addr
-    local server_name
-    for name, server in pairs(core.backends[be].servers) do
-        local status = server:get_stats()['status']
-        if status == "no check" or status:find("UP") == 1 then
-            addr = server:get_addr()
-            server_name = name
-            log_info("addr: '" .. addr .. "'")
-            log_info("server_name: '" .. server_name .. "'")
-            break
-        end
-    end
-    log_info("final addr: '" .. tostring(addr) .. "'")
-    log_info("final server_name: '" .. tostring(server_name) .. "'")
+    local cmd = string.format('curl -s -H "Host: %s" "%s"', host, url) -- Construct the curl command
+    local file = io.tmpfile()
+    cmd = cmd .. " > " .. file:filename()
+    local exit_code = os.execute(cmd)
 
-    if addr == nil or addr == '<unknown>' then
-        log_info("No servers available for auth-request backend: '" .. be .. "'")
-        return {
-            keys = config.publicKeys.keys,
-            expiresIn = 1 -- 1 second
-        }
+    if exit_code ~= 0 then
+        log_alert("Failed to execute curl: " .. exit_code)
+        file:close()
+        return {keys = config.publicKeys.keys, expiresIn = 1} -- Fallback
     end
 
-    local ip_url = string.gsub(url, '|'..be..'|', addr)
-    -- local domain_url = string.gsub(url, '|'..be..'|', server_name)
-    -- local http_headers = {Host = server_name}
+    local content = file:read("*a")
+    file:close()
 
-    -- if config.jwks_proxy then
-    --     ip_url = config.jwks_proxy
-    --     http_headers = nil
-    -- end
-
-    log_info('Retrieving JWKS Public Key Data from: ' .. ip_url)
-    -- log_info('Retrieving JWKS Public Key Data from: ' .. domain_url)
-
-    local response, err = http.get{url=ip_url} --, headers={Host = server_name}}
-    -- local httpclient = core.httpclient()
-    -- local response, err = httpclient:get{url=ip_url, headers={Host=server_name}}
-    -- local response, err = http.get{url=domain_url}
-
-    if not response then
-        log_alert(err)
-        return {
-            keys = config.publicKeys.keys,
-            expiresIn = 1 -- 1 second
-        }
-    end
-    for key, value in pairs(response) do
-        log_info(tostring(key) .. ": " .. tostring(value))
+    local JWKS_response, err = json.decode(content)
+    if not JWKS_response then
+        log_alert("Failed to decode JWKS JSON: " .. (err or "unknown error"))
+        return {keys = config.publicKeys.keys, expiresIn = 1} -- Fallback
     end
 
-    if response.status_code ~= 200 then
-        log_info("JWKS data is not available.")
-        log_info("status_code: " .. response.status_code or "<none>")
-        log_info("body: " .. dump(response.content) or "<none>")
-        log_info("headers: " .. dump(response.headers) or "<none>")
-        log_info("reason: " .. response.reason or "<none>")
-
-        -- return already set publicKeys if already set
-        if is_cached then
-            return {
-                keys = config.publicKeys.keys,
-                expiresIn = 60 -- 60 second
-            }
-        end
-
-        log_alert("JWKS data is not available")
-    end
-
-    local JWKS_response = json.decode(response.content)
-
-    for _,v in pairs(JWKS_response.public_certs) do
-        table.insert(publicKeys,openssl.x509.new(v.cert):getPublicKey())
-        log_info("Public Key Cached: " .. v.kid)
-    end
-
-    local max_age
-
-    if response.headers['cache-control'] then
-        local has_max_age = string.match(response.headers['cache-control'], "max%-age=%d+")
-        if has_max_age then
-            max_age = tonumber(string.gsub(has_max_age, 'max%-age=', ''), 10)
+    for _,v in pairs(JWKS_response.keys or JWKS_response.public_certs or {}) do -- Handle different JWKS formats
+        local cert = v.x5c and v.x5c[1] or v.cert
+        if cert then
+            local x509_obj, err = openssl.x509.new(cert)
+            if x509_obj then
+                table.insert(publicKeys, x509_obj:getPublicKey())
+                log_info("Public Key Cached: " .. (v.kid or "no kid"))
+            else
+                log_alert("Failed to parse cert: " .. (err or "unknown error"))
+            end
         end
     end
 
-    if max_age then
-        expiresIn = math.min(max_age, config.max_cache)
-    else
-        log_info('cache-control headers not able to be retrieved from JWKS endpoint')
+    -- Extract cache control
+    local cache_control_header = string.match(content, "Cache-Control: ([^\r\n]+)")
+    if cache_control_header then
+        local max_age_match = string.match(cache_control_header, "max-age=(%d+)")
+        if max_age_match then
+            expiresIn = math.min(tonumber(max_age_match), config.max_cache)
+        end
     end
 
-    return {
-        keys = publicKeys,
-        expiresIn = expiresIn
-    }
-
+    return {keys = publicKeys, expiresIn = expiresIn}
 end
 
 function jwtverify(txn)
@@ -336,10 +428,9 @@ end
 -- based on an interval. The interval we use is based on the cache headers as part of the JWKS response
 function refresh_jwks()
     log_info("Refresh JWKS task initialized")
-
     while true do
         log_info('Refreshing JWKS data')
-        local status, publicKeys = xpcall(getJwksData, debug.traceback, config.jwks_url)
+        local status, publicKeys = xpcall(getJwksData, debug.traceback, config.jwks_url, config.host) -- Pass the host
         if status then
             config.publicKeys = publicKeys
         else
@@ -348,7 +439,7 @@ function refresh_jwks()
         end
 
         log_info('Getting new Certificate in '..(config.publicKeys.expiresIn)..' seconds - '
-                ..os.date('%c', os.time() + config.publicKeys.expiresIn))
+            ..os.date('%c', os.time() + config.publicKeys.expiresIn))
         core.sleep(config.publicKeys.expiresIn)
     end
 end
@@ -358,9 +449,10 @@ end
 core.register_init(function()
     config.issuer = os.getenv("OAUTH_ISSUER")
     config.jwks_url = os.getenv("OAUTH_JWKS_URL")
-    config.jwks_proxy = os.getenv("JWKS_PROXY")
+    config.host = os.getenv("OAUTH_HOST")
     log_info("JWKS URL: " .. (config.jwks_url or "<none>"))
     log_info("Issuer: " .. (config.issuer or "<none>"))
+    log_info("Host: " .. (config.host or "<none>"))
 end)
 
 -- Called on a request.
