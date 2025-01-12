@@ -187,13 +187,19 @@ local function getJwksData(url)
     log_info('Retrieving JWKS Public Key Data from: ' .. domain_url)
 
     -- local response, err = http.get{url=ip_url, headers={Host=server_name}}
-    local response, err = http.get(domain_url)
+    local httpclient = core.httpclient()
+    local response, err = httpclient:post{url=domain_url}
+    -- local response, err = http.get{url=domain_url}
+
     if not response then
         log_alert(err)
         return {
             keys = config.publicKeys.keys,
             expiresIn = 1 -- 1 second
         }
+    end
+    for key, value in pairs(response) do
+        log_info(tostring(key) .. ": " .. tostring(value))
     end
 
     if response.status_code ~= 200 then
