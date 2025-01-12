@@ -169,6 +169,8 @@ local function getJwksData(url)
             break
         end
     end
+    log_info("final addr: '" .. addr .. "'")
+    log_info("final server_name: '" .. server_name .. "'")
 
     if addr == nil or addr == '<unknown>' then
         log_info("No servers available for auth-request backend: '" .. be .. "'")
