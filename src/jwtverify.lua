@@ -164,6 +164,8 @@ local function getJwksData(url)
         if status == "no check" or status:find("UP") == 1 then
             addr = server:get_addr()
             server_name = name
+            log_info("addr: '" .. addr .. "'")
+            log_info("server_name: '" .. server_name .. "'")
             break
         end
     end
