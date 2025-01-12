@@ -180,7 +180,7 @@ local function getJwksData(url)
         }
     end
 
-    local ip_url = string.gsub(url, '|'..be..'|', addr)
+    local ip_url = string.gsub(url, '|'..be..'|', server_name)
 
     log_info('Retrieving JWKS Public Key Data')
 
