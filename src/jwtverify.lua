@@ -187,7 +187,7 @@ local function getJwksData(url)
     log_info('Retrieving JWKS Public Key Data from: ' .. domain_url)
 
     -- local response, err = http.get{url=ip_url, headers={Host=server_name}}
-    local response, err = http.fetch{url=domain_url}
+    local response, err = http.get(domain_url)
     if not response then
         log_alert(err)
         return {
