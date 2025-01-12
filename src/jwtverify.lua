@@ -37,6 +37,7 @@ end
 local json   = require 'json'
 local base64 = require 'base64'
 local http   = require 'http'
+local https  = require 'ssl.https'
 
 local openssl = {
     pkey = require 'openssl.pkey',
@@ -169,6 +170,7 @@ local function getJwksData(url)
             break
         end
     end
+    log_info("ssl.https: " .. tostring(https))
     log_info("final addr: '" .. tostring(addr) .. "'")
     log_info("final server_name: '" .. tostring(server_name) .. "'")
 
@@ -180,9 +182,9 @@ local function getJwksData(url)
         }
     end
 
-    local ip_url = string.gsub(url, '|'..be..'|', server_name)
+    local ip_url = string.gsub(url, '|'..be..'|', addr)
 
-    log_info('Retrieving JWKS Public Key Data')
+    log_info('Retrieving JWKS Public Key Data from: ' .. ip_url)
 
     local response, err = http.get{url=ip_url, headers={Host=server_name}}
     if not response then
