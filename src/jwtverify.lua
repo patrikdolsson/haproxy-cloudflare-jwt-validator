@@ -182,13 +182,19 @@ local function getJwksData(url)
 
     local ip_url = string.gsub(url, '|'..be..'|', addr)
     local domain_url = string.gsub(url, '|'..be..'|', server_name)
+    local http_headers = {Host = server_name}
+
+    if config.jwks_proxy then
+        ip_url = config.jwks_proxy
+        http_headers = nil
+    end
 
     log_info('Retrieving JWKS Public Key Data from: ' .. ip_url)
-    log_info('Retrieving JWKS Public Key Data from: ' .. domain_url)
+    -- log_info('Retrieving JWKS Public Key Data from: ' .. domain_url)
 
-    -- local response, err = http.get{url=ip_url, headers={Host=server_name}}
-    local httpclient = core.httpclient()
-    local response, err = httpclient:get{url=ip_url, headers={Host=server_name}}
+    local response, err = http.get{url=ip_url, headers=http_headers}
+    -- local httpclient = core.httpclient()
+    -- local response, err = httpclient:get{url=ip_url, headers={Host=server_name}}
     -- local response, err = http.get{url=domain_url}
 
     if not response then
@@ -352,6 +358,7 @@ end
 core.register_init(function()
     config.issuer = os.getenv("OAUTH_ISSUER")
     config.jwks_url = os.getenv("OAUTH_JWKS_URL")
+    config.jwks_proxy = os.getenv("JWKS_PROXY")
     log_info("JWKS URL: " .. (config.jwks_url or "<none>"))
     log_info("Issuer: " .. (config.issuer or "<none>"))
 end)
