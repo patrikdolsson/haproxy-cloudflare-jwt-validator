@@ -188,7 +188,7 @@ local function getJwksData(url)
 
     -- local response, err = http.get{url=ip_url, headers={Host=server_name}}
     local httpclient = core.httpclient()
-    local response, err = httpclient:post{url=domain_url}
+    local response, err = httpclient:get{url=domain_url}
     -- local response, err = http.get{url=domain_url}
 
     if not response then
