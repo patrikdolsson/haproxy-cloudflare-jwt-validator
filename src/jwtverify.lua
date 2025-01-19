@@ -302,15 +302,15 @@ local function getJwksData(url, host)
     local publicKeys = {}
     local expiresIn = 60 * 60 -- 1 hour default
 
-    local cmd = string.format('curl -H "Host: %s" "%s" > /tmp/jwks.json', host, url) -- Construct the curl command
-    local os_execute_response = os.execute('curl "' .. url .. '" -H "Accept: application/json" > /tmp/jwks.json')
-    local file = io.open("/tmp/jwks.json", "r")
-    log_info("os.execute response: " .. tostring(os_execute_response))
-    if not file then
-        log_alert("No file found at /tmp/jwks.json")
-        file:close()
-        return {keys = config.publicKeys.keys, expiresIn = 1} -- Fallback
-    end
+    -- local cmd = string.format('curl -H "Host: %s" "%s" > /tmp/jwks.json', host, url) -- Construct the curl command
+    -- local os_execute_response = os.execute('curl "' .. url .. '" -H "Accept: application/json" > /tmp/jwks.json')
+    -- local file = io.open("/tmp/jwks.json", "r")
+    -- log_info("os.execute response: " .. tostring(os_execute_response))
+    -- if not file then
+    --     log_alert("No file found at /tmp/jwks.json")
+    --     file:close()
+    --     return {keys = config.publicKeys.keys, expiresIn = 1} -- Fallback
+    -- end
 
     -- if exit_code ~= 0 then
     --     log_alert("Failed to execute curl: " .. tostring(exit_code))
@@ -318,8 +318,13 @@ local function getJwksData(url, host)
     --     return {keys = config.publicKeys.keys, expiresIn = 1} -- Fallback
     -- end
 
-    local content = file:read("*a")
-    file:close()
+    -- local content = file:read("*a")
+    -- file:close()
+
+
+    local handle = io.popen('curl "' .. url .. '" -H "Accept: application/json" > /tmp/jwks.json')
+    local content = handle:read("*a")
+    handle:close()
 
     local JWKS_response, err = json.decode(content)
     if not JWKS_response then
